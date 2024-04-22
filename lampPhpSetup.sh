@@ -1,27 +1,27 @@
 #!/bin/bash
 
+# Configuration variables
+DB_PASS="dbpasswd123"
+APACHE_ROOT="/var/www/html"
+APP_DIR="$APACHE_ROOT/app"
+REPO_URL="https://github.com/laravel/laravel"
+
 # Update System
-sudo apt update && sudo apt-get upgrade -y
+sudo apt update && sudo apt upgrade -y
 
-# Install Apache web server
-sudo apt install apache2 -y
+# Install Apache, MySQL, PHP, and required modules
+sudo apt install -y apache2 mysql-server php libapache2-mod-php php-mysql expect
 
-# Install MySQL database server
-sudo apt install mysql-server -y
-
-# Install expect if not already installed
-sudo apt-get install -y expect
-
-# Secure MySQL installation
+# Secure MySQL installation using expect to automate interactions
 SECURE_MYSQL=$(expect -c "
 set timeout 10
 spawn sudo mysql_secure_installation
 expect \"Enter password for user root:\"
-send \"vagrant\r\"
+send \"vagrant\r\" # Assumed initial password or blank for no password
 expect \"New password:\"
-send \"dbpasswd123\r\"
+send \"$DB_PASS\r\"
 expect \"Re-enter new password:\"
-send \"dbpasswd123\r\"
+send \"$DB_PASS\r\"
 expect \"Remove anonymous users? (Press y|Y for Yes, any other key for No) :\"
 send \"Y\r\"
 expect \"Disallow root login remotely? (Press y|Y for Yes, any other key for No) :\"
@@ -32,21 +32,23 @@ expect \"Reload privilege tables now? (Press y|Y for Yes, any other key for No) 
 send \"Y\r\"
 expect eof
 ")
-
 echo "$SECURE_MYSQL"
-
-# Install PHP and required modules
-sudo apt-get install -y php libapache2-mod-php php-mysql
-sudo apt update && sudo apt-get upgrade -y
 
 # Enable mod_rewrite for Apache
 sudo a2enmod rewrite
 
-# Restart Apache to load new configuration
+# Restart Apache to apply changes
 sudo systemctl restart apache2
 
-# Clone your PHP application
-sudo git clone https://github.com/laravel/laravel /var/www/html/app
+# Clone the PHP Laravel application
+sudo git clone $REPO_URL $APP_DIR
+
+# Set permissions for the Laravel application directory
+sudo chown -R www-data:www-data $APP_DIR
+sudo chmod -R 755 $APP_DIR
 
 # Setup database
-mysql -u root -e "CREATE DATABASE appdatab;"
+mysql -u root -p"$DB_PASS" -e "CREATE DATABASE appdatabase;"
+
+# Restart Apache to load new configuration
+sudo systemctl restart apache2
